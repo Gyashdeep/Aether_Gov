@@ -17,47 +17,36 @@ else:
     st.stop()
 
 # ============================================================
-# 2. THE GOVERNOR (Verified Model ID)
+# 2. THE GOVERNOR (Updated Model ID - May 2026)
 # ============================================================
-# Using 'deepseek-r1-distill-llama-70b' to fix the 404 Model Not Found error.
-model = GroqModel('deepseek-r1-distill-llama-70b')
+# Using 'deepseek-v3-distill-llama-70b' to resolve decommissioning error
+model = GroqModel('deepseek-v3-distill-llama-70b')
 governor = Agent(model) 
 
 # ============================================================
 # 3. MISSION CONTROL: ENTERPRISE AI FACTORY
 # ============================================================
 def main():
-    st.set_page_config(
-        page_title="AETHER-GOV // MASTER OS", 
-        page_icon="⚡", 
-        layout="wide"
-    )
+    st.set_page_config(page_title="AETHER-GOV // MASTER OS", page_icon="⚡", layout="wide")
     
-    # Nexus-Flow Dark-Mode Aesthetic
     st.html("""
         <style>
         .stApp { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
         div[data-testid="stMetric"] { border: 1px solid #333; padding: 15px; background: #111; }
         .stButton>button { 
-            background-color: #00FF41 !important; 
-            color: black !important; 
-            font-weight: bold; 
-            width: 100%; 
-            border-radius: 0px; 
-            border: none;
-            height: 3em;
+            background-color: #00FF41 !important; color: black !important; 
+            font-weight: bold; width: 100%; border-radius: 0px; border: none; height: 3em;
         }
-        .stButton>button:hover { background-color: #00CC33 !important; }
         </style>
     """)
 
     st.title("⚡ AETHER-GOV // NEXUS-FLOW MASTER OS")
-    st.caption("Raipur Hub // Enterprise Data AI Factory // Sovereign-Core v4.2")
+    st.caption("Raipur Hub // Enterprise Data AI Factory // v4.5 Sovereign-Core")
     
     with st.sidebar:
         st.header("📡 INFRASTRUCTURE")
         st.write("**Node:** NEXUS-RAIPUR-01")
-        st.write("**Engine:** DeepSeek-R1-Distill")
+        st.write("**Engine:** DeepSeek-V3-Distill")
         st.divider()
         st.header("📊 TELEMETRY")
         live_temp = st.slider("Core Temp (°C)", 40.0, 95.0, 72.0)
@@ -65,7 +54,7 @@ def main():
         st.divider()
         st.success("SYSTEM: ONLINE")
 
-    # Nexus-Flow Telemetry HUD
+    # Nexus-Flow HUD
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
@@ -73,23 +62,18 @@ def main():
         spread = grid_spot - 215.0
         st.metric("Arbitrage Spread", f"${spread:.2f}/MWh", delta="SELL" if spread > 0 else "COMPUTE")
     with m3:
-        st.metric("LPU Latency", "32ms", delta="-5ms")
+        st.metric("LPU Latency", "28ms", delta="-4ms")
 
-    # Execution Layer
     if st.button("EXECUTE SOVEREIGN REASONING"):
         async def run_governor():
             prompt = f"""
-            SYSTEM ROLE: Sovereign Governor.
-            GOAL: Maximize Profit-per-Watt for the Enterprise AI Factory.
-            
+            SYSTEM ROLE: Sovereign Governor for Enterprise AI Factory.
             LOGIC:
             - If Grid Price > 215.0, Action = SELL_GRID.
             - If Grid Price <= 215.0, Action = MAX_COMPUTE.
             - If Temperature > 85.0C, Action = THERMAL_PROTECT (Override).
             
-            CURRENT DATA:
-            - Temperature: {live_temp}C
-            - Grid Price: ${grid_spot}/MWh
+            TELEMETRY: Temp {live_temp}C, Grid ${grid_spot}/MWh.
             
             Return ONLY a raw JSON object:
             {{
@@ -102,12 +86,11 @@ def main():
             return await governor.run(prompt)
         
         try:
-            with st.status("Nexus-Flow analyzing Energy-Compute Nexus...", expanded=True) as status:
+            with st.status("Nexus-Flow recalibrating for Raipur Hub...", expanded=True) as status:
                 result = asyncio.run(run_governor())
                 
-                # Cleaning response for JSON parsing
+                # Enhanced Cleanup for V3 responses
                 raw_data = result.data.replace('```json', '').replace('```', '').strip()
-                # Handle potential DeepSeek thinking tags <think>...</think>
                 if "</think>" in raw_data:
                     raw_data = raw_data.split("</think>")[-1].strip()
                 
@@ -122,21 +105,13 @@ def main():
                 st.metric("Target Power Cap", f"{res['power_limit_kw']} KW")
                 st.write(f"**Financial Delta:** `+${res['expected_profit_delta']}/hr`")
             with col_b:
-                st.subheader("Enterprise AI Factory Audit")
+                st.subheader("Audit Logic Trace")
                 st.info(res['audit_trace'])
             
-            # Visualization
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number", value = res['power_limit_kw'],
                 title = {'text': "Power Assignment (KW)", 'font': {'color': "#00FF41"}},
-                gauge = {
-                    'axis': {'range': [None, 500], 'tickcolor': "#00FF41"},
-                    'bar': {'color': "#00FF41"},
-                    'steps': [
-                        {'range': [0, 400], 'color': "#111"},
-                        {'range': [400, 500], 'color': "#300"}
-                    ],
-                }
+                gauge = {'axis': {'range': [None, 500]}, 'bar': {'color': "#00FF41"}}
             ))
             fig.update_layout(paper_bgcolor="#050505", font={'color': "#00FF41"})
             st.plotly_chart(fig, use_container_width=True)
