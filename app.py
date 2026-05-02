@@ -3,12 +3,11 @@ import asyncio
 import json
 import streamlit as st
 import plotly.graph_objects as go
-from typing import Literal
 from pydantic_ai import Agent
 from pydantic_ai.models.groq import GroqModel
 
 # ============================================================
-# 1. SECURE AUTHENTICATION (NEXUS-FLOW PROTOCOL)
+# 1. SECURE AUTHENTICATION
 # ============================================================
 if "GROQ_API_KEY" in st.secrets:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"].strip()
@@ -17,16 +16,11 @@ else:
     st.stop()
 
 # ============================================================
-# 2. THE GOVERNOR (Switching to STABLE Flagship ID)
+# 2. THE GOVERNOR (Stable Configuration)
 # ============================================================
-# 'llama-3.3-70b-versatile' is the most stable ID on Groq for 2026.
-# This prevents the frequent 404/400 errors from deprecated distillations.
 model = GroqModel('llama-3.3-70b-versatile')
 governor = Agent(model) 
 
-# ============================================================
-# 3. MISSION CONTROL: ENTERPRISE AI FACTORY
-# ============================================================
 def main():
     st.set_page_config(page_title="AETHER-GOV // MASTER OS", page_icon="⚡", layout="wide")
     
@@ -42,51 +36,39 @@ def main():
     """)
 
     st.title("⚡ AETHER-GOV // NEXUS-FLOW MASTER OS")
-    st.caption("Raipur Hub // Enterprise Data AI Factory // v5.0 Stable-Core")
+    st.caption("Raipur Hub // Enterprise Data AI Factory // v5.2 Stable-Core")
     
     with st.sidebar:
         st.header("📡 INFRASTRUCTURE")
         st.write("**Node:** NEXUS-RAIPUR-01")
-        st.write("**Engine:** Llama-3.3-70B-Versatile")
+        st.write("**Engine:** Llama-3.3-Stable")
         st.divider()
-        st.header("📊 TELEMETRY")
         live_temp = st.slider("Core Temp (°C)", 40.0, 95.0, 72.0)
         grid_spot = st.number_input("Grid Spot Price ($/MWh)", value=285)
-        st.success("STABLE ENGINE LOADED")
-
-    m1, m2, m3 = st.columns(3)
-    with m1: st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
-    with m2: st.metric("Arbitrage Spread", f"${grid_spot - 215.0:.2f}/MWh")
-    with m3: st.metric("LPU Latency", "24ms")
 
     if st.button("EXECUTE SOVEREIGN REASONING"):
         async def run_governor():
             prompt = f"""
-            SYSTEM ROLE: Sovereign Governor for Enterprise AI Factory.
-            LOGIC:
-            - If Grid Price > 215.0, Action = SELL_GRID.
-            - If Grid Price <= 215.0, Action = MAX_COMPUTE.
-            - If Temperature > 85.0C, Action = THERMAL_PROTECT (Override).
-            
-            STATUS: Temp {live_temp}C, Grid ${grid_spot}/MWh.
-            
+            Role: Sovereign Governor.
+            Logic: If Grid Price > 215, SELL_GRID. Else, MAX_COMPUTE. If Temp > 85, THERMAL_PROTECT.
+            Status: Temp {live_temp}C, Grid ${grid_spot}/MWh.
             Return ONLY a raw JSON object:
-            {{
-                "action": "STRING",
-                "power_limit_kw": "INT (50-500)",
-                "expected_profit_delta": "FLOAT",
-                "audit_trace": "ONE_SENTENCE_REASONING"
-            }}
+            {{"action": "STR", "power_limit_kw": INT, "expected_profit_delta": FLOAT, "audit_trace": "STR"}}
             """
             return await governor.run(prompt)
         
         try:
-            with st.status("Nexus-Flow analyzing energy nexus...", expanded=True):
-                result = asyncio.run(run_governor())
-                # Llama-3.3 is cleaner than DeepSeek; simpler parsing works here
-                raw_data = result.data.strip()
+            with st.status("Accessing Nexus-Flow Core...", expanded=True):
+                response = asyncio.run(run_governor())
+                
+                # FIXED RESULT EXTRACTION
+                raw_data = str(getattr(response, 'data', response)).strip()
+                
                 if "```json" in raw_data:
                     raw_data = raw_data.split("```json")[1].split("```")[0].strip()
+                elif "
+```" in raw_data:
+                    raw_data = raw_data.split("```")[1].strip()
                 
                 res = json.loads(raw_data)
             
@@ -109,6 +91,10 @@ def main():
             
         except Exception as e:
             st.error(f"Sovereign Error: {e}")
+            # Debugging info
+            if 'response' in locals():
+                with st.expander("View Raw Nexus-Flow Output"):
+                    st.text(response)
 
 if __name__ == "__main__":
     main()
