@@ -11,47 +11,41 @@ from pydantic_ai.models.groq import GroqModel
 # ============================================================
 # 1. AUTHENTICATION & SECURE ACCESS
 # ============================================================
-# Replace with your actual Groq API Key
-os.environ["GROQ_API_KEY"] = "your_key_here"
+# ENTER YOUR KEY HERE
+os.environ["GROQ_API_KEY"] = "gsk_your_actual_key_here"
 
 # ============================================================
-# 2. SOVEREIGN SCHEMAS (Validation for Industrial Control)
+# 2. SOVEREIGN SCHEMAS 
 # ============================================================
 
 class ArbitrageDecision(BaseModel):
-    """The strictly-typed command output for the Sovereign Agent."""
-    action: Literal['MAX_COMPUTE', 'SELL_GRID', 'THERMAL_PROTECT'] = Field(
-        description="The operational directive for the GPU cluster."
-    )
-    power_limit_kw: int = Field(ge=50, le=500, description="GPU power cap in Kilowatts.")
-    expected_profit_delta: float = Field(description="Projected hourly P&L change in USD.")
-    audit_trace: str = Field(description="Reasoning trace for the Enterprise Data Factory.")
+    action: Literal['MAX_COMPUTE', 'SELL_GRID', 'THERMAL_PROTECT'] = Field(description="Operational directive.")
+    power_limit_kw: int = Field(ge=50, le=500, description="GPU power cap.")
+    expected_profit_delta: float = Field(description="Projected hourly P&L change.")
+    audit_trace: str = Field(description="Reasoning for Data Factory.")
 
 @dataclass
 class FacilityContext:
-    """Live snapshot of the thermal and financial state."""
     facility_id: str
     temp_c: float
     grid_price_mwh: float
-    compute_yield_mwh: float = 215.0 # Fixed benchmark for 2026 profit
+    compute_yield_mwh: float = 215.0
 
 # ============================================================
-# 3. THE GOVERNOR (DeepSeek-V4-Pro + Groq LPU)
+# 3. THE GOVERNOR (Updated Agent Syntax)
 # ============================================================
 
-# Explicitly defining the model to avoid UserError
 model = GroqModel('deepseek-v4-pro')
 
+# We pass the model as a positional argument and result_type as a keyword
 governor = Agent(
-    model=model,  # Corrected to use the model keyword
-    deps_type=FacilityContext,
+    model,
     result_type=ArbitrageDecision,
     system_prompt=(
         "You are the Sovereign Governor. Mission: Maximize Profit-per-Watt. "
         "Logic: If Grid Price > Compute Yield, SELL electricity to the grid. "
         "Logic: If Compute Yield > Grid Price, MAXIMIZE Compute throughput. "
-        "Safety: If Temp > 85°C, FORCE THERMAL_PROTECT regardless of profit. "
-        "This decision will be audited by the Enterprise Data Factory."
+        "Safety: If Temp > 85°C, FORCE THERMAL_PROTECT regardless of profit."
     )
 )
 
@@ -62,7 +56,6 @@ governor = Agent(
 def main():
     st.set_page_config(page_title="AETHER-GOV // SOVEREIGN OS", layout="wide")
     
-    # Custom CSS for Industrial "Dark-Mode" aesthetic
     st.markdown("""
         <style>
         .main { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
@@ -72,29 +65,22 @@ def main():
     """, unsafe_allow_code=True)
 
     st.title("⚡ AETHER-GOV // Sovereign Master OS")
-    st.caption("DeepSeek-V4-Pro Architecture // Groq LPU Core // Industrial Arbitrage Protocol")
-
-    # Sidebar: Control Panel
+    
     with st.sidebar:
         st.header("📡 Live Telemetry")
         f_id = st.text_input("Facility ID", value="NEXUS-RAIPUR-01")
         live_temp = st.slider("Core Temp (°C)", 40.0, 95.0, 74.0)
         grid_spot = st.number_input("Grid Spot Price ($/MWh)", value=290)
-        st.divider()
-        st.info("Enterprise Data Factory: [ACTIVE]")
-        st.success("Hardware Link: [STABLE]")
 
-    # Main Metrics Grid
     m1, m2, m3 = st.columns(3)
     with m1:
-        st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C", delta_color="inverse")
+        st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
     with m2:
         spread = grid_spot - 215.0
-        st.metric("Market Arbitrage", f"${spread:.2f}/MWh", delta="SELL" if spread > 0 else "COMPUTE")
+        st.metric("Market Arbitrage", f"${spread:.2f}/MWh")
     with m3:
-        st.metric("Groq LPU Latency", "34ms", delta="-5ms")
+        st.metric("Groq LPU Latency", "34ms")
 
-    # Agentic Execution Loop
     if st.button("TRIGGER SOVEREIGN REASONING"):
         ctx = FacilityContext(
             facility_id=f_id,
@@ -103,9 +89,12 @@ def main():
         )
 
         with st.status("DeepSeek-V4 analyzing Energy-Compute Nexus...", expanded=True) as status:
-            # Sync wrapper for the async agent call
             async def run_agent():
-                return await governor.run("Analyze facility and market flux.", deps=ctx)
+                # Passing deps directly into the run method
+                return await governor.run(
+                    f"Status: {live_temp}C, ${grid_spot}/MWh", 
+                    deps=ctx
+                )
             
             result = asyncio.run(run_agent())
             res = result.data
@@ -117,9 +106,8 @@ def main():
             with st.expander("View Sovereign Logic Audit Trace"):
                 st.code(res.audit_trace)
             
-            status.update(label="Decision Executed to Hardware PLC Layer", state="complete")
+            status.update(label="Decision Executed", state="complete")
 
-        # Visualization
         fig = go.Figure(go.Indicator(
             mode = "gauge+number",
             value = res.power_limit_kw,
@@ -129,7 +117,7 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
-    if os.environ.get("GROQ_API_KEY") == "your_key_here":
-        st.error("FATAL: Please update the script with your actual Groq API Key.")
+    if os.environ.get("GROQ_API_KEY") == "gsk_your_actual_key_here":
+        st.error("Please update the script with your actual Groq API Key.")
     else:
         main()
