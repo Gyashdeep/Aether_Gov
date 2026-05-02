@@ -11,17 +11,16 @@ from pydantic_ai.models.groq import GroqModel
 # 1. SECURE AUTHENTICATION (NEXUS-FLOW PROTOCOL)
 # ============================================================
 if "GROQ_API_KEY" in st.secrets:
-    # strip() ensures no accidental whitespace causes 401 errors
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"].strip()
 else:
     st.error("🚨 CRITICAL: GROQ_API_KEY not found in Streamlit Secrets.")
     st.stop()
 
 # ============================================================
-# 2. THE GOVERNOR (Sovereign Positional Initialization)
+# 2. THE GOVERNOR (Verified Model ID)
 # ============================================================
-# Positional model injection satisfies strict Python 3.14 constructors
-model = GroqModel('deepseek-v4-pro')
+# Using 'deepseek-r1-distill-llama-70b' to fix the 404 Model Not Found error.
+model = GroqModel('deepseek-r1-distill-llama-70b')
 governor = Agent(model) 
 
 # ============================================================
@@ -53,48 +52,46 @@ def main():
     """)
 
     st.title("⚡ AETHER-GOV // NEXUS-FLOW MASTER OS")
-    st.caption("Raipur Hub // Enterprise Data AI Factory // v4.0 Sovereign-Core")
+    st.caption("Raipur Hub // Enterprise Data AI Factory // Sovereign-Core v4.2")
     
     with st.sidebar:
         st.header("📡 INFRASTRUCTURE")
-        st.write("**Node:** NEXUS-RAIPUR-SEC-01")
-        st.write("**Compute:** Groq LPU Array")
+        st.write("**Node:** NEXUS-RAIPUR-01")
+        st.write("**Engine:** DeepSeek-R1-Distill")
         st.divider()
-        st.header("📊 LIVE TELEMETRY")
+        st.header("📊 TELEMETRY")
         live_temp = st.slider("Core Temp (°C)", 40.0, 95.0, 72.0)
         grid_spot = st.number_input("Grid Spot Price ($/MWh)", value=285)
         st.divider()
-        st.success("AUTHENTICATION: VERIFIED")
+        st.success("SYSTEM: ONLINE")
 
     # Nexus-Flow Telemetry HUD
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
     with m2:
-        # Business Logic: Profitability benchmark at $215/MWh
         spread = grid_spot - 215.0
         st.metric("Arbitrage Spread", f"${spread:.2f}/MWh", delta="SELL" if spread > 0 else "COMPUTE")
     with m3:
-        st.metric("LPU Inference", "32ms", delta="-4ms")
+        st.metric("LPU Latency", "32ms", delta="-5ms")
 
-    # Execution Trigger
+    # Execution Layer
     if st.button("EXECUTE SOVEREIGN REASONING"):
         async def run_governor():
-            # Instructions and JSON Schema are defined here to bypass Agent keyword issues
             prompt = f"""
             SYSTEM ROLE: Sovereign Governor.
             GOAL: Maximize Profit-per-Watt for the Enterprise AI Factory.
             
-            OPERATIONAL LOGIC:
+            LOGIC:
             - If Grid Price > 215.0, Action = SELL_GRID.
             - If Grid Price <= 215.0, Action = MAX_COMPUTE.
             - If Temperature > 85.0C, Action = THERMAL_PROTECT (Override).
             
-            CURRENT TELEMETRY:
-            - Facility Temp: {live_temp}C
+            CURRENT DATA:
+            - Temperature: {live_temp}C
             - Grid Price: ${grid_spot}/MWh
             
-            JSON OUTPUT FORMAT:
+            Return ONLY a raw JSON object:
             {{
                 "action": "STRING",
                 "power_limit_kw": "INT (50-500)",
@@ -105,14 +102,17 @@ def main():
             return await governor.run(prompt)
         
         try:
-            with st.status("Nexus-Flow calculating Energy-Compute Nexus...", expanded=True) as status:
+            with st.status("Nexus-Flow analyzing Energy-Compute Nexus...", expanded=True) as status:
                 result = asyncio.run(run_governor())
                 
-                # Robust extraction to handle potential LLM markdown tags
+                # Cleaning response for JSON parsing
                 raw_data = result.data.replace('```json', '').replace('```', '').strip()
-                res = json.loads(raw_data)
+                # Handle potential DeepSeek thinking tags <think>...</think>
+                if "</think>" in raw_data:
+                    raw_data = raw_data.split("</think>")[-1].strip()
                 
-                status.update(label="Sovereign Decision Finalized", state="complete")
+                res = json.loads(raw_data)
+                status.update(label="Sovereign Decision Logged", state="complete")
             
             st.divider()
             st.header(f"DIRECTIVE: {res['action']}")
@@ -122,13 +122,13 @@ def main():
                 st.metric("Target Power Cap", f"{res['power_limit_kw']} KW")
                 st.write(f"**Financial Delta:** `+${res['expected_profit_delta']}/hr`")
             with col_b:
-                st.subheader("Audit Logic Trace")
+                st.subheader("Enterprise AI Factory Audit")
                 st.info(res['audit_trace'])
             
-            # Interactive Data Dashboard Visualization
+            # Visualization
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number", value = res['power_limit_kw'],
-                title = {'text': "Power Allocation (KW)", 'font': {'color': "#00FF41"}},
+                title = {'text': "Power Assignment (KW)", 'font': {'color': "#00FF41"}},
                 gauge = {
                     'axis': {'range': [None, 500], 'tickcolor': "#00FF41"},
                     'bar': {'color': "#00FF41"},
@@ -143,8 +143,6 @@ def main():
             
         except Exception as e:
             st.error(f"Nexus-Flow Interruption: {str(e)}")
-            if 'result' in locals():
-                st.code(result.data)
 
 if __name__ == "__main__":
     main()
