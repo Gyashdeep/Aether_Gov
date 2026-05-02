@@ -24,6 +24,7 @@ governor = Agent(model)
 def main():
     st.set_page_config(page_title="AETHER-GOV // MASTER OS", page_icon="⚡", layout="wide")
     
+    # Nexus-Flow Master OS CSS
     st.html("""
         <style>
         .stApp { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
@@ -36,7 +37,7 @@ def main():
     """)
 
     st.title("⚡ AETHER-GOV // NEXUS-FLOW MASTER OS")
-    st.caption("Raipur Hub // Enterprise Data AI Factory // v5.5 Stable-Core")
+    st.caption("Raipur Hub // Enterprise Data AI Factory // v5.8 Stable-Core")
     
     with st.sidebar:
         st.header("📡 INFRASTRUCTURE")
@@ -65,13 +66,11 @@ def main():
                 raw_data = str(getattr(response, 'data', response)).strip()
                 
                 if "```json" in raw_data:
-                    raw_data = raw_data.split("```json")[1].split("
-```")[0].strip()
+                    raw_data = raw_data.split("```json")[1].split("```")[0].strip()
                 elif "```" in raw_data:
-                    # Clean split for generic code blocks
-                    parts = raw_data.split("
-```")
-                    raw_data = parts[1].strip() if len(parts) > 1 else parts[0].strip()
+                    raw_data = raw_data.split("```")[1].split("```")[0].strip()
+                else:
+                    raw_data = raw_data.strip()
                 
                 res = json.loads(raw_data)
             
@@ -80,14 +79,18 @@ def main():
             
             c1, c2 = st.columns(2)
             with c1:
-                st.metric("Power Cap", f"{res['power_limit_kw']} KW")
+                st.metric("Power Allocation", f"{res['power_limit_kw']} KW")
                 st.write(f"**Profit Delta:** `+${res['expected_profit_delta']}/hr`")
             with c2:
                 st.info(res['audit_trace'])
             
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number", value = res['power_limit_kw'],
-                gauge = {'axis': {'range': [None, 500]}, 'bar': {'color': "#00FF41"}}
+                gauge = {
+                    'axis': {'range': [None, 500]}, 
+                    'bar': {'color': "#00FF41"},
+                    'bgcolor': "#111"
+                }
             ))
             fig.update_layout(paper_bgcolor="#050505", font={'color': "#00FF41"})
             st.plotly_chart(fig, use_container_width=True)
