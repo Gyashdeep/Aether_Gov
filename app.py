@@ -1,46 +1,60 @@
 import os
 import asyncio
-import json
-import re
-import random
 import datetime
+import json
+import random
 import streamlit as st
 import plotly.graph_objects as go
+from pydantic import BaseModel, Field, validator
 from pydantic_ai import Agent
 from pydantic_ai.models.groq import GroqModel
 
 # ============================================================
-# 1. INFRASTRUCTURE & SECURITY
+# 1. THE SAFETY SCHEMA (The AI's Guardrails)
+# ============================================================
+class GovernanceDecision(BaseModel):
+    action: str = Field(description="The operational command: SCALE_UP, SHED_LOAD, or HOLD.")
+    power_limit_kw: int = Field(description="Target power load for Raipur Hub in Kilowatts.")
+    profit_delta: float = Field(description="Projected arbitrage profit in USD/hr.")
+    trace: str = Field(description="The logical justification for this move.")
+
+    @validator('power_limit_kw')
+    def physical_limit_check(cls, v):
+        # HARD PHYSICAL CAP: AI cannot request more than 500kW regardless of price
+        return max(0, min(v, 500))
+
+# ============================================================
+# 2. INFRASTRUCTURE & SECURITY
 # ============================================================
 if "GROQ_API_KEY" in st.secrets:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"].strip()
 else:
-    st.error("🚨 CRITICAL: GROQ_API_KEY missing.")
+    st.error("🚨 CRITICAL: GROQ_API_KEY missing in st.secrets.")
     st.stop()
 
 # ============================================================
-# 2. SOVEREIGN LEDGER (THE AUDIT TRAIL)
+# 3. PHYSICAL BRIDGE & AUDIT (SOVEREIGN LAYER)
 # ============================================================
-def commit_to_ledger(data):
+def commit_to_ledger(data: dict):
     """Saves every sovereign decision to a secure local audit file."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    entry = {"timestamp": timestamp, "telemetry": st.session_state.telemetry, "decision": data}
+    entry = {"timestamp": timestamp, "decision": data}
     with open("sovereign_ledger.jsonl", "a") as f:
         f.write(json.dumps(entry) + "\n")
 
-# ============================================================
-# 3. PHYSICAL BRIDGE (ACTUATION SIMULATOR)
-# ============================================================
-def dispatch_hardware_command(action, kw_limit):
+def dispatch_hardware_command(decision: GovernanceDecision, current_temp: float):
     """
-    Simulates sending a signal to the Raipur Hub Power Management System.
-    In production: Replace with API/SNMP calls to physical breakers.
+    SAFETY LAYER: Validates AI intent against real-time physics.
     """
-    status = f"SIGNAL_SENT: {action} AT {kw_limit}KW"
-    return status
+    # SAFETY LOCK: If Temp > 85C, override AI and force SHED_LOAD
+    if current_temp > 85.0 and decision.action != "SHED_LOAD":
+        return "SAFETY_OVERRIDE: CRITICAL TEMP. FORCING LOAD SHED.", 0
+    
+    status = f"ACTUATED: {decision.action} @ {decision.power_limit_kw}KW"
+    return status, decision.power_limit_kw
 
 # ============================================================
-# 4. DATA NERVOUS SYSTEM (LIVE TELEMETRY)
+# 4. DATA & CORE ENGINE
 # ============================================================
 def get_live_data():
     return {
@@ -48,101 +62,72 @@ def get_live_data():
         "core_temp": round(random.uniform(55.0, 95.0), 1)
     }
 
-# ============================================================
-# 5. THE GOVERNOR (STABLE ENGINE)
-# ============================================================
 model = GroqModel('llama-3.3-70b-versatile')
-governor = Agent(model)
+# We use result_type to ensure the AI speaks 'JSON' naturally
+governor = Agent(model, result_type=GovernanceDecision)
 
 # ============================================================
-# 6. MASTER OS INTERFACE
+# 5. UI INTERFACE
 # ============================================================
 def main():
-    st.set_page_config(page_title="SOVEREIGN STAGE 4 // RAIPUR HUB", page_icon="🏛️", layout="wide")
+    st.set_page_config(page_title="SOVEREIGN STAGE 4 // RAIPUR", page_icon="⚡", layout="wide")
     
-    st.html("""
+    # Terminal Aesthetics
+    st.markdown("""
         <style>
         .stApp { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
-        div[data-testid="stMetric"] { border: 1px solid #333; background: #111; border-left: 5px solid #00FF41; }
-        .stButton>button { background-color: #00FF41 !important; color: black !important; font-weight: bold; border-radius: 0px; height: 3.5em; }
-        .log-terminal { background-color: #000; border: 1px solid #00FF41; padding: 10px; color: #00FF41; font-size: 0.8em; }
+        .stMetric { border: 1px solid #00FF41; background: #0a0a0a; padding: 10px; }
+        .log-box { background-color: #000; border: 1px solid #00FF41; padding: 15px; font-size: 0.85em; }
         </style>
-    """)
-
-    st.markdown("<h1 style='color: #00FF41; margin-bottom: 0px;'>⚡ Sovereign Energy-Compute Arbitrage</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #00FF41; opacity: 0.8; letter-spacing: 2px;'>STAGE 4: PHYSICAL ACTUATION & AUDIT LEDGER</p>", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     if 'telemetry' not in st.session_state:
         st.session_state.telemetry = get_live_data()
 
-    # SIDEBAR: LEDGER VIEWER
-    with st.sidebar:
-        st.header("📋 AUDIT LEDGER")
-        if st.button("PULL REFRESH"):
-            st.session_state.telemetry = get_live_data()
-        st.divider()
-        st.write("**Node:** NEXUS-RAIPUR-01")
-        if os.path.exists("sovereign_ledger.jsonl"):
-            with open("sovereign_ledger.jsonl", "r") as f:
-                logs = f.readlines()
-                st.caption(f"Total Audit Entries: {len(logs)}")
-        st.success("STAGE 4 CORE: ACTIVE")
+    st.title("🏛️ SOVEREIGN ENERGY OS")
+    
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Market Price", f"${st.session_state.telemetry['grid_price']}/MWh")
+    col2.metric("Chiller Temp", f"{st.session_state.telemetry['core_temp']}°C")
+    col3.metric("System Health", "NOMINAL" if st.session_state.telemetry['core_temp'] < 85 else "CRITICAL")
 
-    # HUD
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Market Price", f"${st.session_state.telemetry['grid_price']}/MWh")
-    m2.metric("Chiller Temp", f"{st.session_state.telemetry['core_temp']}°C")
-    m3.metric("Actuation Status", "CONNECTED", delta="READY")
-
-    st.divider()
-
-    if st.button("DEPLOY SOVEREIGN COMMAND"):
-        async def execute_governance():
-            prompt = f"""
-            Role: Sovereign Governor Stage 4. 
-            Telemetry: Price ${st.session_state.telemetry['grid_price']}, Temp {st.session_state.telemetry['core_temp']}C.
-            Logic: Pivot $215/MWh. Thermal safety 85C.
-            Return ONLY JSON: {{"action": "STR", "power_limit_kw": INT, "profit_delta": FLOAT, "trace": "STR"}}
-            """
+    if st.button("EXECUTE GOVERNANCE CYCLE"):
+        async def run_governance():
+            prompt = (
+                f"Market: ${st.session_state.telemetry['grid_price']}. "
+                f"Temp: {st.session_state.telemetry['core_temp']}C. "
+                "Pivot at $215/MWh. Max Safety 85C."
+            )
             return await governor.run(prompt)
 
-        try:
-            with st.status("Computing Sovereign Trajectory...", expanded=True):
-                response = asyncio.run(execute_governance())
-                raw = str(getattr(response, 'data', getattr(response, 'result', response))).strip()
+        with st.status("Analyzing Control Loop Stability...", expanded=True):
+            try:
+                result = asyncio.run(run_governance())
+                decision = result.data # Automatically a GovernanceDecision object
                 
-                # SELF-HEALING PARSER
-                match = re.search(r'\{.*\}', raw, re.DOTALL)
-                if match:
-                    json_str = match.group().replace("'", '"')
-                    res = json.loads(json_str)
-                else:
-                    raise ValueError("Handshake Failed.")
+                # RUN PHYSICAL SAFETY BRIDGE
+                status_msg, final_kw = dispatch_hardware_command(decision, st.session_state.telemetry['core_temp'])
+                
+                # LOG TO LEDGER
+                commit_to_ledger(decision.dict())
 
-                # STAGE 4: THE BRIDGE & THE LEDGER
-                actuation_log = dispatch_hardware_command(res['action'], res['power_limit_kw'])
-                commit_to_ledger(res)
+                st.success("Decision Logged and Actuated.")
+                
+                # HUD DISPLAY
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.subheader(f"Directive: {decision.action}")
+                    st.write(f"**Safety Logic:** {decision.trace}")
+                    st.write(f"**Profit Delta:** +${decision.profit_delta}/hr")
+                
+                with c2:
+                    st.markdown(f"<div class='log-box'><b>[HARDWARE STATUS]:</b> {status_msg}<br>"
+                                f"<b>[FINAL LOAD]:</b> {final_kw} KW<br>"
+                                f"<b>[AUDIT]:</b> Entry committed to sovereign_ledger.jsonl</div>", 
+                                unsafe_allow_html=True)
 
-            # UI DISPLAY
-            st.header(f"DIRECTIVE: {res['action']}")
-            c1, c2 = st.columns([1, 2])
-            
-            with c1:
-                st.metric("Final Load Assignment", f"{res['power_limit_kw']} KW")
-                fig = go.Figure(go.Indicator(mode="gauge+number", value=res['power_limit_kw'], gauge={'axis':{'range':[None, 500]}, 'bar':{'color':"#00FF41"}}))
-                fig.update_layout(paper_bgcolor="#050505", font={'color':"#00FF41"}, height=250)
-                st.plotly_chart(fig, use_container_width=True)
-
-            with c2:
-                st.markdown("<div class='log-terminal'>", unsafe_allow_html=True)
-                st.write(f"**[BRIDGE]** {actuation_log}")
-                st.write(f"**[LEDGER]** Entry committed to sovereign_ledger.jsonl")
-                st.write(f"**[REASON]** {res['trace']}")
-                st.write(f"**[PROFIT]** Projected +${res['profit_delta']}/hr")
-                st.markdown("</div>", unsafe_allow_html=True)
-
-        except Exception as e:
-            st.error(f"Sovereign Breach: {e}")
+            except Exception as e:
+                st.error(f"SYSTEM HALT: {str(e)}")
 
 if __name__ == "__main__":
     main()
