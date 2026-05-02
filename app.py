@@ -8,33 +8,39 @@ from pydantic_ai import Agent
 from pydantic_ai.models.groq import GroqModel
 
 # ============================================================
-# 1. AUTHENTICATION (Sovereign Key Management)
+# 1. AUTHENTICATION & SECURE ACCESS
 # ============================================================
-# If running locally, paste your key here. 
-# If on Streamlit Cloud, use st.secrets["GROQ_API_KEY"]
+# IMPORTANT: Replace with your actual Groq API Key
 os.environ["GROQ_API_KEY"] = "YOUR_ACTUAL_GROQ_API_KEY_HERE"
 
 # ============================================================
-# 2. SOVEREIGN SCHEMAS 
+# 2. SOVEREIGN SCHEMAS (Locked for Static Result Typing)
 # ============================================================
 class ArbitrageDecision(BaseModel):
-    action: Literal['MAX_COMPUTE', 'SELL_GRID', 'THERMAL_PROTECT'] = Field(description="Operational directive.")
+    """The strictly-typed command output for the Sovereign Agent."""
+    action: Literal['MAX_COMPUTE', 'SELL_GRID', 'THERMAL_PROTECT'] = Field(
+        description="The operational directive for the GPU cluster."
+    )
     power_limit_kw: int = Field(ge=50, le=500, description="GPU power cap.")
     expected_profit_delta: float = Field(description="Projected hourly P&L change.")
-    audit_trace: str = Field(description="Reasoning for Data Factory.")
+    audit_trace: str = Field(description="Reasoning trace for the Enterprise Data Factory.")
 
 # ============================================================
-# 3. THE GOVERNOR (DeepSeek-V4-Pro Logic)
+# 3. THE GOVERNOR (Pre-configured with Result Type)
 # ============================================================
 model = GroqModel('deepseek-v4-pro')
-governor = Agent(model)
 
-SYSTEM_INSTRUCTION = (
-    "You are the Sovereign Governor. Mission: Maximize Profit-per-Watt. "
-    "Logic: If Grid Price > Compute Yield (215.0), SELL electricity to the grid. "
-    "Logic: If Compute Yield > Grid Price, MAXIMIZE Compute throughput. "
-    "Safety: If Temp > 85°C, FORCE THERMAL_PROTECT regardless of profit. "
-    "Respond strictly as an ArbitrageDecision object."
+# Fixed: Defining result_type in the constructor for version compatibility
+governor = Agent(
+    model,
+    result_type=ArbitrageDecision,
+    system_prompt=(
+        "You are the Sovereign Governor. Mission: Maximize Profit-per-Watt. "
+        "Logic: If Grid Price > 215.0, SELL electricity to the grid. "
+        "Logic: If Compute Yield > Grid Price, MAXIMIZE Compute throughput. "
+        "Safety: If Temp > 85°C, FORCE THERMAL_PROTECT regardless of profit. "
+        "Explain your logic clearly in the audit_trace."
+    )
 )
 
 # ============================================================
@@ -43,7 +49,7 @@ SYSTEM_INSTRUCTION = (
 def main():
     st.set_page_config(page_title="AETHER-GOV // SOVEREIGN OS", layout="wide")
     
-    # Using st.html to bypass the Python 3.14 st.markdown TypeError
+    # Using st.html to bypass the Python 3.14 st.markdown string-parsing bug
     st.html("""
         <style>
         .stApp { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
@@ -60,7 +66,7 @@ def main():
     """)
 
     st.title("⚡ AETHER-GOV // Sovereign Master OS")
-    st.caption("Industrial Energy-Compute Arbitrage // Raipur Hub // Nexus-Flow Protocol")
+    st.caption("Raipur Hub // Nexus-Flow Energy-Compute Arbitrage // Industrial HUD")
     
     with st.sidebar:
         st.header("📡 Live Telemetry")
@@ -70,7 +76,7 @@ def main():
         st.divider()
         st.info("Status: Enterprise Data Factory ACTIVE")
 
-    # Real-time Spread Calculation
+    # Hardware & Market metrics
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
@@ -80,32 +86,33 @@ def main():
     with m3:
         st.metric("Groq LPU Latency", "32ms", delta="-4ms")
 
+    # Execution Trigger
     if st.button("TRIGGER SOVEREIGN REASONING"):
         with st.status("Engaging DeepSeek-V4-Pro Reasoning Engine...", expanded=True) as status:
+            
             async def run_agent():
-                # Passing result_type inside the run call for maximum compatibility
+                # Corrected: result_type is already handled by the Agent constructor
                 return await governor.run(
-                    f"DATA: ID={f_id}, TEMP={live_temp}C, SPOT={grid_spot}. {SYSTEM_INSTRUCTION}",
-                    result_type=ArbitrageDecision
+                    f"DATA: ID={f_id}, TEMP={live_temp}C, SPOT={grid_spot}."
                 )
             
             try:
                 result = asyncio.run(run_agent())
                 res = result.data
                 
-                status.update(label="Directive Calculated", state="complete")
+                status.update(label="Sovereign Directive Finalized", state="complete")
                 
                 st.subheader(f"DIRECTIVE: {res.action}")
                 
                 col_a, col_b = st.columns(2)
                 with col_a:
                     st.write(f"**Hardware Target:** `{res.power_limit_kw} KW`")
-                    st.write(f"**Financial Delta:** `+${res.expected_profit_delta}/hr`")
+                    st.write(f"**Financial Impact:** `+${res.expected_profit_delta}/hr`")
                 with col_b:
                     with st.expander("Audit Logic Trace"):
                         st.info(res.audit_trace)
                 
-                # Visual Feedback
+                # Visual Infrastructure Gauge
                 fig = go.Figure(go.Indicator(
                     mode = "gauge+number", value = res.power_limit_kw,
                     domain = {'x': [0, 1], 'y': [0, 1]},
@@ -123,7 +130,7 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
                 
             except Exception as e:
-                st.error(f"Sovereign Reasoning Interrupted: {str(e)}")
+                st.error(f"Sovereign Reasoning Error: {str(e)}")
                 status.update(label="Critical Failure", state="error")
 
 if __name__ == "__main__":
