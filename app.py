@@ -13,14 +13,15 @@ from pydantic_ai.models.groq import GroqModel
 if "GROQ_API_KEY" in st.secrets:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"].strip()
 else:
-    st.error("🚨 CRITICAL: GROQ_API_KEY not found in Streamlit Secrets.")
+    st.error("🚨 CRITICAL: GROQ_API_KEY missing from Secrets.")
     st.stop()
 
 # ============================================================
-# 2. THE GOVERNOR (Updated Model ID - May 2026)
+# 2. THE GOVERNOR (Switching to STABLE Flagship ID)
 # ============================================================
-# Using 'deepseek-v3-distill-llama-70b' to resolve decommissioning error
-model = GroqModel('deepseek-v3-distill-llama-70b')
+# 'llama-3.3-70b-versatile' is the most stable ID on Groq for 2026.
+# This prevents the frequent 404/400 errors from deprecated distillations.
+model = GroqModel('llama-3.3-70b-versatile')
 governor = Agent(model) 
 
 # ============================================================
@@ -41,28 +42,22 @@ def main():
     """)
 
     st.title("⚡ AETHER-GOV // NEXUS-FLOW MASTER OS")
-    st.caption("Raipur Hub // Enterprise Data AI Factory // v4.5 Sovereign-Core")
+    st.caption("Raipur Hub // Enterprise Data AI Factory // v5.0 Stable-Core")
     
     with st.sidebar:
         st.header("📡 INFRASTRUCTURE")
         st.write("**Node:** NEXUS-RAIPUR-01")
-        st.write("**Engine:** DeepSeek-V3-Distill")
+        st.write("**Engine:** Llama-3.3-70B-Versatile")
         st.divider()
         st.header("📊 TELEMETRY")
         live_temp = st.slider("Core Temp (°C)", 40.0, 95.0, 72.0)
         grid_spot = st.number_input("Grid Spot Price ($/MWh)", value=285)
-        st.divider()
-        st.success("SYSTEM: ONLINE")
+        st.success("STABLE ENGINE LOADED")
 
-    # Nexus-Flow HUD
     m1, m2, m3 = st.columns(3)
-    with m1:
-        st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
-    with m2:
-        spread = grid_spot - 215.0
-        st.metric("Arbitrage Spread", f"${spread:.2f}/MWh", delta="SELL" if spread > 0 else "COMPUTE")
-    with m3:
-        st.metric("LPU Latency", "28ms", delta="-4ms")
+    with m1: st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
+    with m2: st.metric("Arbitrage Spread", f"${grid_spot - 215.0:.2f}/MWh")
+    with m3: st.metric("LPU Latency", "24ms")
 
     if st.button("EXECUTE SOVEREIGN REASONING"):
         async def run_governor():
@@ -73,7 +68,7 @@ def main():
             - If Grid Price <= 215.0, Action = MAX_COMPUTE.
             - If Temperature > 85.0C, Action = THERMAL_PROTECT (Override).
             
-            TELEMETRY: Temp {live_temp}C, Grid ${grid_spot}/MWh.
+            STATUS: Temp {live_temp}C, Grid ${grid_spot}/MWh.
             
             Return ONLY a raw JSON object:
             {{
@@ -86,38 +81,34 @@ def main():
             return await governor.run(prompt)
         
         try:
-            with st.status("Nexus-Flow recalibrating for Raipur Hub...", expanded=True) as status:
+            with st.status("Nexus-Flow analyzing energy nexus...", expanded=True):
                 result = asyncio.run(run_governor())
-                
-                # Enhanced Cleanup for V3 responses
-                raw_data = result.data.replace('```json', '').replace('```', '').strip()
-                if "</think>" in raw_data:
-                    raw_data = raw_data.split("</think>")[-1].strip()
+                # Llama-3.3 is cleaner than DeepSeek; simpler parsing works here
+                raw_data = result.data.strip()
+                if "```json" in raw_data:
+                    raw_data = raw_data.split("```json")[1].split("```")[0].strip()
                 
                 res = json.loads(raw_data)
-                status.update(label="Sovereign Decision Logged", state="complete")
             
             st.divider()
             st.header(f"DIRECTIVE: {res['action']}")
             
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.metric("Target Power Cap", f"{res['power_limit_kw']} KW")
-                st.write(f"**Financial Delta:** `+${res['expected_profit_delta']}/hr`")
-            with col_b:
-                st.subheader("Audit Logic Trace")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.metric("Power Cap", f"{res['power_limit_kw']} KW")
+                st.write(f"**Profit Delta:** `+${res['expected_profit_delta']}/hr`")
+            with c2:
                 st.info(res['audit_trace'])
             
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number", value = res['power_limit_kw'],
-                title = {'text': "Power Assignment (KW)", 'font': {'color': "#00FF41"}},
                 gauge = {'axis': {'range': [None, 500]}, 'bar': {'color': "#00FF41"}}
             ))
             fig.update_layout(paper_bgcolor="#050505", font={'color': "#00FF41"})
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig)
             
         except Exception as e:
-            st.error(f"Nexus-Flow Interruption: {str(e)}")
+            st.error(f"Sovereign Error: {e}")
 
 if __name__ == "__main__":
     main()
