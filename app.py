@@ -6,12 +6,13 @@ from typing import Literal
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.models.groq import GroqModel
 
 # ============================================================
 # 1. AUTHENTICATION & SECURE ACCESS
 # ============================================================
 # Replace with your actual Groq API Key
-os.environ["GROQ_API_KEY"] = "gsk_your_key_here"
+os.environ["GROQ_API_KEY"] = "your_key_here"
 
 # ============================================================
 # 2. SOVEREIGN SCHEMAS (Validation for Industrial Control)
@@ -38,9 +39,11 @@ class FacilityContext:
 # 3. THE GOVERNOR (DeepSeek-V4-Pro + Groq LPU)
 # ============================================================
 
-# Initializing the Governor with DeepSeek-V4-Pro (1.6T MoE)
+# Explicitly defining the model to avoid UserError
+model = GroqModel('deepseek-v4-pro')
+
 governor = Agent(
-    'groq:deepseek-v4-pro',
+    model=model,  # Corrected to use the model keyword
     deps_type=FacilityContext,
     result_type=ArbitrageDecision,
     system_prompt=(
@@ -64,7 +67,7 @@ def main():
         <style>
         .main { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
         div[data-testid="stMetric"] { border: 1px solid #333; padding: 15px; background: #111; }
-        .stButton>button { background-color: #00FF41; color: black; font-weight: bold; width: 100%; }
+        .stButton>button { background-color: #00FF41; color: black; font-weight: bold; width: 100%; border-radius: 0px; }
         </style>
     """, unsafe_allow_code=True)
 
@@ -84,7 +87,7 @@ def main():
     # Main Metrics Grid
     m1, m2, m3 = st.columns(3)
     with m1:
-        st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C", delta="-0.5")
+        st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C", delta_color="inverse")
     with m2:
         spread = grid_spot - 215.0
         st.metric("Market Arbitrage", f"${spread:.2f}/MWh", delta="SELL" if spread > 0 else "COMPUTE")
@@ -100,8 +103,11 @@ def main():
         )
 
         with st.status("DeepSeek-V4 analyzing Energy-Compute Nexus...", expanded=True) as status:
-            # Running the Synchronous execution via asyncio for the Streamlit loop
-            result = asyncio.run(governor.run("Analyze facility and market flux.", deps=ctx))
+            # Sync wrapper for the async agent call
+            async def run_agent():
+                return await governor.run("Analyze facility and market flux.", deps=ctx)
+            
+            result = asyncio.run(run_agent())
             res = result.data
             
             st.subheader(f"DIRECTIVE: {res.action}")
@@ -123,7 +129,7 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
 
 if __name__ == "__main__":
-    if os.environ.get("GROQ_API_KEY") == "gsk_your_key_here":
+    if os.environ.get("GROQ_API_KEY") == "your_key_here":
         st.error("FATAL: Please update the script with your actual Groq API Key.")
     else:
         main()
