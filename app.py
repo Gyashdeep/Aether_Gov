@@ -16,7 +16,7 @@ else:
     st.stop()
 
 # ============================================================
-# 2. THE GOVERNOR (Stable Configuration)
+# 2. THE GOVERNOR (Llama 3.3 Stable Flagship)
 # ============================================================
 model = GroqModel('llama-3.3-70b-versatile')
 governor = Agent(model) 
@@ -36,7 +36,7 @@ def main():
     """)
 
     st.title("⚡ AETHER-GOV // NEXUS-FLOW MASTER OS")
-    st.caption("Raipur Hub // Enterprise Data AI Factory // v5.2 Stable-Core")
+    st.caption("Raipur Hub // Enterprise Data AI Factory // v5.5 Stable-Core")
     
     with st.sidebar:
         st.header("📡 INFRASTRUCTURE")
@@ -61,14 +61,17 @@ def main():
             with st.status("Accessing Nexus-Flow Core...", expanded=True):
                 response = asyncio.run(run_governor())
                 
-                # FIXED RESULT EXTRACTION
+                # FIXED RESULT EXTRACTION & STRING TERMINATION
                 raw_data = str(getattr(response, 'data', response)).strip()
                 
                 if "```json" in raw_data:
-                    raw_data = raw_data.split("```json")[1].split("```")[0].strip()
-                elif "
-```" in raw_data:
-                    raw_data = raw_data.split("```")[1].strip()
+                    raw_data = raw_data.split("```json")[1].split("
+```")[0].strip()
+                elif "```" in raw_data:
+                    # Clean split for generic code blocks
+                    parts = raw_data.split("
+```")
+                    raw_data = parts[1].strip() if len(parts) > 1 else parts[0].strip()
                 
                 res = json.loads(raw_data)
             
@@ -87,14 +90,13 @@ def main():
                 gauge = {'axis': {'range': [None, 500]}, 'bar': {'color': "#00FF41"}}
             ))
             fig.update_layout(paper_bgcolor="#050505", font={'color': "#00FF41"})
-            st.plotly_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
             
         except Exception as e:
             st.error(f"Sovereign Error: {e}")
-            # Debugging info
             if 'response' in locals():
-                with st.expander("View Raw Nexus-Flow Output"):
-                    st.text(response)
+                with st.expander("View Raw Output Log"):
+                    st.text(str(response))
 
 if __name__ == "__main__":
     main()
