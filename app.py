@@ -7,7 +7,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.groq import GroqModel
 
 # ============================================================
-# 1. SECURE AUTHENTICATION (ENTERPRISE AI FACTORY PROTOCOL)
+# 1. SECURE AUTHENTICATION (NEXUS-FLOW PROTOCOL)
 # ============================================================
 if "GROQ_API_KEY" in st.secrets:
     os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"].strip()
@@ -16,19 +16,19 @@ else:
     st.stop()
 
 # ============================================================
-# 2. THE GOVERNOR (Stable Infrastructure)
+# 2. THE GOVERNOR (STABLE INFRASTRUCTURE)
 # ============================================================
-# Llama-3.3-70B provides the most stable ID for industrial logic.
+# Llama-3.3-70B-Versatile is the most reliable ID for 2026 production.
 model = GroqModel('llama-3.3-70b-versatile')
 governor = Agent(model) 
 
 # ============================================================
-# 3. MISSION CONTROL: NEXUS-FLOW MASTER OS
+# 3. MISSION CONTROL: ENTERPRISE AI FACTORY
 # ============================================================
 def main():
     st.set_page_config(page_title="AETHER-GOV // MASTER OS", page_icon="⚡", layout="wide")
     
-    # Nexus-Flow Master OS Dark-Mode Aesthetic
+    # Custom UI Injection for Industrial Dark Mode
     st.html("""
         <style>
         .stApp { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
@@ -42,20 +42,20 @@ def main():
     """)
 
     st.title("⚡ AETHER-GOV // NEXUS-FLOW MASTER OS")
-    st.caption("Raipur Hub // Enterprise Data AI Factory // v6.0 Resilient-Core")
+    st.caption("Raipur Hub // Enterprise Data AI Factory // v6.5 Sovereign-Core")
     
     with st.sidebar:
         st.header("📡 INFRASTRUCTURE")
         st.write("**Node:** NEXUS-RAIPUR-01")
-        st.write("**Engine:** Llama-3.3-70B")
+        st.write("**Engine:** Llama-3.3-Stable")
         st.divider()
         st.header("📊 LIVE TELEMETRY")
         live_temp = st.slider("Core Temp (°C)", 40.0, 95.0, 72.0)
         grid_spot = st.number_input("Grid Spot Price ($/MWh)", value=285)
         st.divider()
-        st.success("STABLE ENGINE LOADED")
+        st.success("SYSTEM: READY")
 
-    # Nexus-Flow Telemetry HUD
+    # Nexus-Flow HUD
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
@@ -63,7 +63,7 @@ def main():
         spread = grid_spot - 215.0
         st.metric("Arbitrage Spread", f"${spread:.2f}/MWh", delta="SELL" if spread > 0 else "COMPUTE")
     with m3:
-        st.metric("LPU Latency", "24ms", delta="-8ms")
+        st.metric("LPU Latency", "24ms", delta="-12ms")
 
     # Execution Layer
     if st.button("EXECUTE SOVEREIGN REASONING"):
@@ -71,23 +71,20 @@ def main():
             prompt = f"""
             SYSTEM ROLE: Sovereign Governor for Enterprise AI Factory.
             
-            OPERATIONAL LOGIC:
-            - Threshold: $215/MWh (Compute Profitability).
+            RULES:
             - If Grid Price > 215.0, Action = SELL_GRID.
             - If Grid Price <= 215.0, Action = MAX_COMPUTE.
-            - If Temperature > 85.0C, Action = THERMAL_PROTECT (Safety Override).
+            - If Temperature > 85.0C, Action = THERMAL_PROTECT (Safety).
             
-            CURRENT DATA:
-            - Temperature: {live_temp}C
-            - Grid Price: ${grid_spot}/MWh
+            STATUS: Temp {live_temp}C, Grid ${grid_spot}/MWh.
             
             RETURN FORMAT:
-            You must return a raw JSON object with these keys:
+            You MUST return a raw JSON object with double quotes. No commentary.
             {{
-                "action": "STRING (MAX_COMPUTE, SELL_GRID, THERMAL_PROTECT)",
+                "action": "STRING",
                 "power_limit_kw": "INT (50-500)",
                 "expected_profit_delta": "FLOAT",
-                "audit_trace": "ONE_SENTENCE_REASONING"
+                "audit_trace": "STRING"
             }}
             """
             return await governor.run(prompt)
@@ -96,18 +93,20 @@ def main():
             with st.status("Accessing Nexus-Flow Core...", expanded=True):
                 response = asyncio.run(run_governor())
                 
-                # 1. EXTRACT RAW DATA SAFELY
+                # 1. EXTRACT DATA SAFELY
                 raw_data = str(getattr(response, 'data', getattr(response, 'result', response))).strip()
                 
-                # 2. IRONCLAD PARSER (Locate JSON boundaries regardless of surrounding text)
+                # 2. SELF-HEALING IRONCLAD PARSER
                 start_index = raw_data.find('{')
                 end_index = raw_data.rfind('}') + 1
                 
                 if start_index != -1 and end_index != 0:
                     json_str = raw_data[start_index:end_index]
-                    res = json.loads(json_str)
+                    # Fix quote issues automatically before parsing
+                    sanitized_json = json_str.replace("'", '"')
+                    res = json.loads(sanitized_json)
                 else:
-                    raise ValueError("Incomplete Protocol: No valid JSON detected in LPU stream.")
+                    raise ValueError("Protocol Malformed: No JSON structure detected.")
             
             st.divider()
             st.header(f"DIRECTIVE: {res['action']}")
@@ -115,22 +114,19 @@ def main():
             col_a, col_b = st.columns(2)
             with col_a:
                 st.metric("Power Allocation", f"{res['power_limit_kw']} KW")
-                st.write(f"**Financial Impact:** `+${res['expected_profit_delta']}/hr`")
+                st.write(f"**Profit Impact:** `+${res['expected_profit_delta']}/hr`")
             with col_b:
                 st.subheader("Audit Logic Trace")
                 st.info(res['audit_trace'])
             
-            # Dashboard Visualization
+            # Sovereign Visualization
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number", value = res['power_limit_kw'],
                 title = {'text': "Power Assignment (KW)", 'font': {'color': "#00FF41"}},
                 gauge = {
                     'axis': {'range': [None, 500], 'tickcolor': "#00FF41"},
                     'bar': {'color': "#00FF41"},
-                    'steps': [
-                        {'range': [0, 400], 'color': "#111"},
-                        {'range': [400, 500], 'color': "#300"}
-                    ],
+                    'bgcolor': "#111"
                 }
             ))
             fig.update_layout(paper_bgcolor="#050505", font={'color': "#00FF41"})
