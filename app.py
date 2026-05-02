@@ -10,7 +10,7 @@ from pydantic_ai.models.groq import GroqModel
 # ============================================================
 # 1. AUTHENTICATION
 # ============================================================
-# Paste your key here or use st.secrets for Cloud
+# Replace with your actual key
 os.environ["GROQ_API_KEY"] = "YOUR_ACTUAL_GROQ_API_KEY_HERE"
 
 # ============================================================
@@ -23,12 +23,16 @@ class ArbitrageDecision(BaseModel):
     audit_trace: str = Field(description="Logic trace.")
 
 # ============================================================
-# 3. THE GOVERNOR (Minimalist Initialization)
+# 3. THE GOVERNOR (Compatible Initialization)
 # ============================================================
+# We define the result type using the bracket notation [ArbitrageDecision]
+# and pass only the model and a positional system prompt string.
 model = GroqModel('deepseek-v4-pro')
 
-# We initialize a 'blank' agent to avoid constructor keyword errors
-governor = Agent(model)
+governor = Agent(
+    model=model,
+    result_type=ArbitrageDecision,
+)
 
 # ============================================================
 # 4. MISSION CONTROL (Streamlit)
@@ -36,45 +40,39 @@ governor = Agent(model)
 def main():
     st.set_page_config(page_title="AETHER-GOV", layout="wide")
     
-    # Python 3.14 Stable CSS Injection
+    # Python 3.14 Indentation-Safe CSS
     st.html("<style>.stApp{background-color:#050505;color:#00FF41;font-family:monospace;}</style>")
     st.html("<style>div[data-testid='stMetric']{border:1px solid #333;background:#111;padding:10px;}</style>")
 
     st.title("⚡ AETHER-GOV // Sovereign OS")
-    st.caption("Raipur Hub // Nexus-Flow Energy Arbitrage")
     
     with st.sidebar:
         st.header("📡 Telemetry")
         live_temp = st.slider("Temp (°C)", 40.0, 95.0, 72.0)
         grid_spot = st.number_input("Grid Price ($/MWh)", value=285)
 
-    # Market Spread Logic
     m1, m2, m3 = st.columns(3)
-    with m1:
-        st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
-    with m2:
-        st.metric("Market Spread", f"${grid_spot - 215:.2f}")
-    with m3:
-        st.metric("Groq LPU", "32ms")
+    with m1: st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
+    with m2: st.metric("Market Spread", f"${grid_spot - 215:.2f}")
+    with m3: st.metric("Groq LPU", "32ms")
 
     if st.button("TRIGGER SOVEREIGN REASONING"):
         async def run_agent():
-            # We inject the schema and the system prompt directly into the run command
-            # This bypasses the constructor 'Unknown keyword arguments' error
+            # Standardizing the instructions
             instructions = (
-                "You are the Sovereign Governor. Mission: Maximize Profit-per-Watt. "
-                "If Grid Price > 215.0, SELL electricity. If not, MAXIMIZE Compute. "
-                "If Temp > 85°C, FORCE THERMAL_PROTECT. "
-                "Respond as an ArbitrageDecision object."
+                "Role: Sovereign Governor. Goal: Maximize Profit-per-Watt. "
+                "Context: If Grid Price > 215.0, SELL power. Else, MAXIMIZE Compute. "
+                "Safety: If Temp > 85°C, FORCE THERMAL_PROTECT. "
             )
-            prompt = f"STATUS: {live_temp}C, Grid ${grid_spot}/MWh. {instructions}"
+            prompt = f"{instructions} STATUS: {live_temp}C, Grid ${grid_spot}/MWh."
             
-            return await governor.run(prompt, result_type=ArbitrageDecision)
+            # Calling .run() without any conflicting keyword arguments
+            return await governor.run(prompt)
         
         try:
-            with st.status("Engaging DeepSeek-V4-Pro...", expanded=True):
+            with st.status("Analyzing Energy-Compute Nexus...", expanded=True):
                 result = asyncio.run(run_agent())
-                res = result.data
+                res = result.data # Pydantic AI automatically parses into ArbitrageDecision
             
             st.divider()
             st.subheader(f"DIRECTIVE: {res.action}")
@@ -82,7 +80,7 @@ def main():
             c1, c2 = st.columns(2)
             with c1:
                 st.write(f"**Power Target:** `{res.power_limit_kw} KW`")
-                st.write(f"**Financial Delta:** `+${res.expected_profit_delta}/hr`")
+                st.write(f"**Profit Impact:** `+${res.expected_profit_delta}/hr`")
             with c2:
                 with st.expander("Audit Logic Trace"):
                     st.info(res.audit_trace)
