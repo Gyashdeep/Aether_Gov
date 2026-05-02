@@ -5,7 +5,7 @@ import json
 import random
 import streamlit as st
 import plotly.graph_objects as go
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from pydantic_ai import Agent
 from pydantic_ai.models.groq import GroqModel
 
@@ -18,9 +18,11 @@ class GovernanceDecision(BaseModel):
     profit_delta: float = Field(description="Projected arbitrage profit in USD/hr.")
     trace: str = Field(description="The logical justification for this move.")
 
-    @validator('power_limit_kw')
-    def physical_limit_check(cls, v):
+    @field_validator('power_limit_kw')
+    @classmethod
+    def physical_limit_check(cls, v: int) -> int:
         # HARD PHYSICAL CAP: AI cannot request more than 500kW regardless of price
+        # This prevents 'hallucinated' dangerous values.
         return max(0, min(v, 500))
 
 # ============================================================
@@ -62,9 +64,10 @@ def get_live_data():
         "core_temp": round(random.uniform(55.0, 95.0), 1)
     }
 
+# Initialize Model & Agent
+# NOTE: Using 'output_type' for compatibility with latest pydantic-ai
 model = GroqModel('llama-3.3-70b-versatile')
-# We use result_type to ensure the AI speaks 'JSON' naturally
-governor = Agent(model, result_type=GovernanceDecision)
+governor = Agent(model, output_type=GovernanceDecision)
 
 # ============================================================
 # 5. UI INTERFACE
@@ -72,11 +75,10 @@ governor = Agent(model, result_type=GovernanceDecision)
 def main():
     st.set_page_config(page_title="SOVEREIGN STAGE 4 // RAIPUR", page_icon="⚡", layout="wide")
     
-    # Terminal Aesthetics
     st.markdown("""
         <style>
         .stApp { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
-        .stMetric { border: 1px solid #00FF41; background: #0a0a0a; padding: 10px; }
+        div[data-testid="stMetric"] { border: 1px solid #00FF41; background: #0a0a0a; padding: 15px; }
         .log-box { background-color: #000; border: 1px solid #00FF41; padding: 15px; font-size: 0.85em; }
         </style>
     """, unsafe_allow_html=True)
@@ -84,12 +86,15 @@ def main():
     if 'telemetry' not in st.session_state:
         st.session_state.telemetry = get_live_data()
 
-    st.title("🏛️ SOVEREIGN ENERGY OS")
+    st.title("⚡ SOVEREIGN ENERGY-COMPUTE ARBITRAGE")
+    st.caption("CORE STAGE 4: PHYSICAL ACTUATION & SAFETY GOVERNANCE")
     
     col1, col2, col3 = st.columns(3)
     col1.metric("Market Price", f"${st.session_state.telemetry['grid_price']}/MWh")
     col2.metric("Chiller Temp", f"{st.session_state.telemetry['core_temp']}°C")
     col3.metric("System Health", "NOMINAL" if st.session_state.telemetry['core_temp'] < 85 else "CRITICAL")
+
+    st.divider()
 
     if st.button("EXECUTE GOVERNANCE CYCLE"):
         async def run_governance():
@@ -100,16 +105,17 @@ def main():
             )
             return await governor.run(prompt)
 
-        with st.status("Analyzing Control Loop Stability...", expanded=True):
+        with st.status("Solving for Control Loop Stability...", expanded=True):
             try:
                 result = asyncio.run(run_governance())
-                decision = result.data # Automatically a GovernanceDecision object
+                # Access validated data from result.output
+                decision = result.output
                 
                 # RUN PHYSICAL SAFETY BRIDGE
                 status_msg, final_kw = dispatch_hardware_command(decision, st.session_state.telemetry['core_temp'])
                 
                 # LOG TO LEDGER
-                commit_to_ledger(decision.dict())
+                commit_to_ledger(decision.model_dump())
 
                 st.success("Decision Logged and Actuated.")
                 
@@ -117,8 +123,8 @@ def main():
                 c1, c2 = st.columns(2)
                 with c1:
                     st.subheader(f"Directive: {decision.action}")
-                    st.write(f"**Safety Logic:** {decision.trace}")
-                    st.write(f"**Profit Delta:** +${decision.profit_delta}/hr")
+                    st.info(f"**Reasoning:** {decision.trace}")
+                    st.write(f"**Projected Profit:** +${decision.profit_delta}/hr")
                 
                 with c2:
                     st.markdown(f"<div class='log-box'><b>[HARDWARE STATUS]:</b> {status_msg}<br>"
@@ -127,7 +133,7 @@ def main():
                                 unsafe_allow_html=True)
 
             except Exception as e:
-                st.error(f"SYSTEM HALT: {str(e)}")
+                st.error(f"SAFETY HALT: {str(e)}")
 
 if __name__ == "__main__":
     main()
