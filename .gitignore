@@ -1,0 +1,21 @@
+# --- Sovereign Stage 4 Specifics ---
+# Do NOT commit your API keys or local audit trails
+.streamlit/secrets.toml
+sovereign_ledger.jsonl
+
+# --- Python & Environment ---
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+venv/
+env/
+build/
+dist/
+
+# --- IDE & OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
