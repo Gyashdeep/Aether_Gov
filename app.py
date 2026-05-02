@@ -8,10 +8,11 @@ from pydantic_ai import Agent
 from pydantic_ai.models.groq import GroqModel
 
 # ============================================================
-# 1. AUTHENTICATION (PASTE YOUR KEY BETWEEN THE QUOTES)
+# 1. AUTHENTICATION (Sovereign Key Management)
 # ============================================================
-# Example: os.environ["GROQ_API_KEY"] = "gsk_Vb7..."
-os.environ["GROQ_API_KEY"] = "YOUR_ACTUAL_GROQ_API_KEY_HERE" 
+# If running locally, paste your key here. 
+# If on Streamlit Cloud, use st.secrets["GROQ_API_KEY"]
+os.environ["GROQ_API_KEY"] = "YOUR_ACTUAL_GROQ_API_KEY_HERE"
 
 # ============================================================
 # 2. SOVEREIGN SCHEMAS 
@@ -23,36 +24,43 @@ class ArbitrageDecision(BaseModel):
     audit_trace: str = Field(description="Reasoning for Data Factory.")
 
 # ============================================================
-# 3. THE GOVERNOR
+# 3. THE GOVERNOR (DeepSeek-V4-Pro Logic)
 # ============================================================
-# Initializing with DeepSeek-V4-Pro via Groq
 model = GroqModel('deepseek-v4-pro')
 governor = Agent(model)
 
 SYSTEM_INSTRUCTION = (
     "You are the Sovereign Governor. Mission: Maximize Profit-per-Watt. "
-    "Logic: If Grid Price > Compute Yield, SELL electricity to the grid. "
+    "Logic: If Grid Price > Compute Yield (215.0), SELL electricity to the grid. "
     "Logic: If Compute Yield > Grid Price, MAXIMIZE Compute throughput. "
     "Safety: If Temp > 85°C, FORCE THERMAL_PROTECT regardless of profit. "
-    "Return the result as an ArbitrageDecision object."
+    "Respond strictly as an ArbitrageDecision object."
 )
 
 # ============================================================
-# 4. MISSION CONTROL INTERFACE (Streamlit)
+# 4. MISSION CONTROL (Optimized for Python 3.14)
 # ============================================================
 def main():
     st.set_page_config(page_title="AETHER-GOV // SOVEREIGN OS", layout="wide")
     
-    st.markdown("""
+    # Using st.html to bypass the Python 3.14 st.markdown TypeError
+    st.html("""
         <style>
-        .main { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
+        .stApp { background-color: #050505; color: #00FF41; font-family: 'Courier New', monospace; }
         div[data-testid="stMetric"] { border: 1px solid #333; padding: 15px; background: #111; }
-        .stButton>button { background-color: #00FF41; color: black; font-weight: bold; width: 100%; border-radius: 0px; }
+        .stButton>button { 
+            background-color: #00FF41 !important; 
+            color: black !important; 
+            font-weight: bold; 
+            width: 100%; 
+            border-radius: 0px; 
+            border: none;
+        }
         </style>
-    """, unsafe_allow_code=True)
+    """)
 
     st.title("⚡ AETHER-GOV // Sovereign Master OS")
-    st.caption("Industrial Energy-Compute Arbitrage Protocol // Raipur Hub")
+    st.caption("Industrial Energy-Compute Arbitrage // Raipur Hub // Nexus-Flow Protocol")
     
     with st.sidebar:
         st.header("📡 Live Telemetry")
@@ -62,6 +70,7 @@ def main():
         st.divider()
         st.info("Status: Enterprise Data Factory ACTIVE")
 
+    # Real-time Spread Calculation
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric("Thermal Headroom", f"{90 - live_temp:.1f}°C")
@@ -69,13 +78,14 @@ def main():
         spread = grid_spot - 215.0
         st.metric("Market Arbitrage", f"${spread:.2f}/MWh", delta="SELL" if spread > 0 else "COMPUTE")
     with m3:
-        st.metric("Groq LPU Latency", "32ms")
+        st.metric("Groq LPU Latency", "32ms", delta="-4ms")
 
     if st.button("TRIGGER SOVEREIGN REASONING"):
-        with st.status("Agent Reasoning via DeepSeek-V4-Pro...", expanded=True) as status:
+        with st.status("Engaging DeepSeek-V4-Pro Reasoning Engine...", expanded=True) as status:
             async def run_agent():
+                # Passing result_type inside the run call for maximum compatibility
                 return await governor.run(
-                    f"CONTEXT: {f_id}, TEMP: {live_temp}C, GRID PRICE: ${grid_spot}/MWh. " + SYSTEM_INSTRUCTION,
+                    f"DATA: ID={f_id}, TEMP={live_temp}C, SPOT={grid_spot}. {SYSTEM_INSTRUCTION}",
                     result_type=ArbitrageDecision
                 )
             
@@ -83,25 +93,38 @@ def main():
                 result = asyncio.run(run_agent())
                 res = result.data
                 
+                status.update(label="Directive Calculated", state="complete")
+                
                 st.subheader(f"DIRECTIVE: {res.action}")
-                st.write(f"**Hardware Target:** {res.power_limit_kw} KW")
-                st.write(f"**Profit Impact:** +${res.expected_profit_delta}/hr")
                 
-                with st.expander("Audit Trace (Internal Logic)"):
-                    st.code(res.audit_trace)
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.write(f"**Hardware Target:** `{res.power_limit_kw} KW`")
+                    st.write(f"**Financial Delta:** `+${res.expected_profit_delta}/hr`")
+                with col_b:
+                    with st.expander("Audit Logic Trace"):
+                        st.info(res.audit_trace)
                 
-                # Visual Gauge
+                # Visual Feedback
                 fig = go.Figure(go.Indicator(
                     mode = "gauge+number", value = res.power_limit_kw,
-                    title = {'text': "Assigned Power (KW)"},
-                    gauge = {'axis': {'range': [None, 500]}, 'bar': {'color': "#00FF41"}}
+                    domain = {'x': [0, 1], 'y': [0, 1]},
+                    title = {'text': "Assigned Power (KW)", 'font': {'color': "#00FF41"}},
+                    gauge = {
+                        'axis': {'range': [None, 500], 'tickcolor': "#00FF41"},
+                        'bar': {'color': "#00FF41"},
+                        'steps': [
+                            {'range': [0, 300], 'color': "#111"},
+                            {'range': [400, 500], 'color': "#300"}
+                        ],
+                    }
                 ))
+                fig.update_layout(paper_bgcolor="#050505", font={'color': "#00FF41"})
                 st.plotly_chart(fig, use_container_width=True)
-                status.update(label="Sovereign Decision Finalized", state="complete")
                 
             except Exception as e:
-                st.error(f"Reasoning Error: {str(e)}")
-                status.update(label="Execution Failed", state="error")
+                st.error(f"Sovereign Reasoning Interrupted: {str(e)}")
+                status.update(label="Critical Failure", state="error")
 
 if __name__ == "__main__":
     main()
